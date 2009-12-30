@@ -1,8 +1,9 @@
 from setuptools import setup, find_packages
 import sys, os
 
-version = '1.0'
+version = '1.1'
 shortdesc = 'Handle web application parts as tiles.'
+longdesc = open(os.path.join(os.path.dirname(__file__), 'README.txt')).read()
 longdesc = open(os.path.join(os.path.dirname(__file__), 'src', 'bda', 'bfg',
                              'tile', '_api.txt')).read()
 
@@ -20,7 +21,7 @@ setup(name='bda.bfg.tile',
       keywords='',
       author='BlueDynamics Alliance',
       author_email='dev@bluedynamics.com',
-      url=u'https://svn.bluedynamics.net/svn/internal/bda.tile',
+      url=u'https://svn.bluedynamics.eu/svn/module/bda.bfg.tile/',
       license='GNU General Public Licence',
       packages=find_packages('src'),
       package_dir = {'': 'src'},
@@ -32,12 +33,10 @@ setup(name='bda.bfg.tile',
           'repoze.bfg',
       ],
       dependency_links = [
-          "http://dist.repoze.org/bfg/1.0/",
+          "http://dist.repoze.org/bfg/1.2/",
       ],
       extras_require = dict(
-          test=[
-            'interlude',
-          ]
+          tests=['interlude']
       ),
       tests_require=['interlude'],
       test_suite="bda.bfg.tile.tests.test_suite",      
