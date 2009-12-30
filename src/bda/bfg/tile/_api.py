@@ -1,23 +1,31 @@
 import os
-from zope.interface import Interface, Attribute, implements
-from zope.component import queryUtility
-from zope.component import getMultiAdapter
-from zope.component import ComponentLookupError
-from repoze.bfg.threadlocal import get_current_registry
 from webob import Response
 from webob.exc import HTTPFound
-from repoze.bfg.interfaces import IRequest
-from repoze.bfg.interfaces import IResponseFactory
-from repoze.bfg.interfaces import IAuthenticationPolicy
-from repoze.bfg.interfaces import IViewPermission
+from zope.interface import (
+    Interface, 
+    Attribute, 
+    implements,
+)
+from zope.component import (
+    queryUtility,
+    getMultiAdapter,
+    ComponentLookupError,
+    getSiteManager,
+)
+from repoze.bfg.interfaces import (
+    IRequest,
+    IResponseFactory,
+    IAuthenticationPolicy,
+    IAuthorizationPolicy,    
+)
+from repoze.bfg.configuration import _secure_view
+from repoze.bfg.threadlocal import get_current_registry
 from repoze.bfg.path import caller_package
 from repoze.bfg.renderers import template_renderer_factory
 from repoze.bfg.chameleon_zpt import ZPTTemplateRenderer
-#from repoze.bfg.security import ViewPermissionFactory
-from repoze.bfg.security import has_permission
 
 class ITile(Interface):
-    """returns on call some HTML snippet."""
+    """Renders some HTML snippet."""
     
     def __call__(model, request):
         """Renders the tile.
@@ -37,7 +45,7 @@ class ITile(Interface):
     
 def _update_kw(**kw):
     if not ('request' in kw and 'model' in kw):
-        raise ValueError, "Eexpected kwargs missing: model, request."
+        raise ValueError, "Expected kwargs missing: model, request."
     kw.update({'tile': TileRenderer(kw['model'], kw['request'])})    
     return kw
 
@@ -77,11 +85,12 @@ class Tile(object):
         if not self.show:
             return u''
         if self.path:
-            try:
-                # XXX: do not catch exception.
+            try:                
                 return render_template(self.path, request=request,
                                        model=model, context=self)
             except Exception, e:
+                # XXX: do not catch exception if in debug mode.
+                # todo: check if debug mode and raise, else return as following
                 return u"Error:<br /><pre>%s</pre>" % e
         renderer = getattr(self, self.attribute)
         result = renderer()
@@ -111,15 +120,6 @@ class TileRenderer(object):
         self.model, self.request = model, request
     
     def __call__(self, name):
-        registry = get_current_registry()
-        # XXX fix me. new API in repoze.bfg
-        #secured = not not registry.queryUtility(IAuthenticationPolicy)
-        #if secured:
-        #    permitted = registry.getMultiAdapter((self.model, self.request),
-        #                                         IViewPermission,
-        #                                         name=name)
-        #    if not permitted:
-        #        return u'permission denied'
         try:
             tile = getMultiAdapter((self.model, self.request), ITile, name=name)
         except ComponentLookupError, e:
@@ -127,24 +127,22 @@ class TileRenderer(object):
                    (name, e)
         return tile
 
-# Registration        
+# Registration
 def registerTile(name, path=None, attribute='render',
                  interface=Interface, _class=Tile, permission='view'):
-    if isinstance(interface, basestring):
-        pass # XXX: lookup
+    """registers a tile.""" 
     if path:
         if not (':' in path or os.path.isabs(path)): 
             caller = caller_package(level=1)
             path = '%s:%s' % (caller.__name__, path)
-    factory = _class(path, attribute)
+    view = _class(path, attribute)
     registry = get_current_registry()
-    registry.registerAdapter(factory, [interface, IRequest],
-                             ITile, name, event=False)
-    # XXX fix me. new API in repoze.bfg
-    #if permission:
-    #    factory = ViewPermissionFactory(permission)
-    #    registry.registerAdapter(factory, [interface, IRequest],
-    #                             IViewPermission, name)
+    if permission is not None:
+        authn_policy = registry.queryUtility(IAuthenticationPolicy)
+        authz_policy = registry.queryUtility(IAuthorizationPolicy)    
+        view = _secure_view(view, permission, authn_policy, authz_policy)
+    registry.registerAdapter(view, [interface, IRequest], ITile, name, 
+                             event=False)
     
 class tile(object):
     """Tile decorator.

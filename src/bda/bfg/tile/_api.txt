@@ -1,42 +1,54 @@
-A tile is a piece of web application, i.e. a form, a navigation, etc.
-
-Splitting your application in such small and logic application parts makes it
-easy to re-use this application, simplifies application ajaxification and
-the use of same application parts in different manners.
-
-Imports.:
+Imports.
+::
 
     >>> from bda.bfg.tile import Tile
     >>> from bda.bfg.tile import TileRenderer
     >>> from bda.bfg.tile import registerTile
     >>> from bda.bfg.tile import tile
     
-We need some dummies as model and request.:
+We need some dummies as model and request.
+::
 
     >>> class Model(object): pass
     >>> model = Model()
-    >>> from repoze.bfg.request import DEFAULT_REQUEST_FACTORIES
-    >>> request = DEFAULT_REQUEST_FACTORIES[None]['factory'](environ={})
+    >>> from repoze.bfg.request import Request
+    >>> environ = {
+    ...     'PATH_INFO':'/',
+    ...     'QUERY_STRING':''
+    ... }    
+    >>> request = Request(environ=environ)
+
+For bfg we need to hook our registry into zca.
+::
+
+    >>> from zope.component import getSiteManager
+    >>> from repoze.bfg.threadlocal import get_current_registry
+    >>> sm = getSiteManager.sethook(get_current_registry)
     
 The pure Tile itself. Normally you do not create this directly, this is done
-due registration, see below.:
+due registration, see below.
+::
 
-    >>> mytile = Tile('testdata/tile1.pt', None)
+    >>> tile1pt = 'bda.bfg.tile:testdata/tile1.pt'
+    >>> mytile = Tile(tile1pt, None)
     >>> mytile(model,  request)
     u'<span>Tile One</span>'
 
 Register a tile using the prior template testtemplate. When no object is given,
-the default tile is instanciated as above.:
+the default tile is instanciated as above.
+::
 
-    >>> registerTile('tileone', 'testdata/tile1.pt')
+    >>> registerTile('tileone', tile1pt)
 
-Render the already registered tile.:
+Render the already registered tile.
+::
 
     >>> TileRenderer(model, request)('tileone')
     u'<span>Tile One</span>'
 
 Now the decorator - level=1 is needed for the doctest only to reduce the module
-level.:
+level.
+::
 
     >>> @tile('tiletwo', 'testdata/tile2.pt', level=1)
     ... class Tile2(Tile):
@@ -46,7 +58,8 @@ level.:
 
 You can define an attribute which is responsible to render the tile instead of
 defining a template. By default ``render`` is taken. With the keyword argument 
-``attribute`` you can point to a different attribute.:
+``attribute`` you can point to a different attribute.
+::
     
     >>> @tile('attrtile')
     ... class Tile2(Tile):
