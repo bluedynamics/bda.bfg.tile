@@ -10,14 +10,15 @@ from zope.component import (
     queryUtility,
     getMultiAdapter,
     ComponentLookupError,
-    getSiteManager,
 )
 from repoze.bfg.interfaces import (
     IRequest,
     IResponseFactory,
     IAuthenticationPolicy,
-    IAuthorizationPolicy,    
+    IAuthorizationPolicy,
+    IDebugLogger,
 )
+from repoze.bfg.settings import get_settings
 from repoze.bfg.configuration import _secure_view
 from repoze.bfg.threadlocal import get_current_registry
 from repoze.bfg.path import caller_package
@@ -81,7 +82,7 @@ class Tile(object):
     def __call__(self, model, request):
         self.model = model
         self.request = request
-        self.prepare() # XXX maybe remove.
+        self.prepare() # TODO: discuss if needed. i think yes (jens)
         if not self.show:
             return u''
         if self.path:
@@ -89,9 +90,11 @@ class Tile(object):
                 return render_template(self.path, request=request,
                                        model=model, context=self)
             except Exception, e:
-                # XXX: do not catch exception if in debug mode.
-                # todo: check if debug mode and raise, else return as following
-                return u"Error:<br /><pre>%s</pre>" % e
+                settings = get_settings()
+                if settings['debug']:
+                    logger = IDebugLogger()
+                    logger.debug(u'Exception in %s:\n%s' % (repr(tile), e))
+                return u"Error while rendering tile %e." % repr(tile) 
         renderer = getattr(self, self.attribute)
         result = renderer()
         return result
@@ -107,6 +110,7 @@ class Tile(object):
         return u''
     
     def redirect(self, url):
+        # why do we need a redirect in a tile!?
         self.request.environ['redirect'] = url
     
     @property
@@ -134,7 +138,11 @@ def _consume_unauthorized(tile):
         try:
             tile(context, request)
         except Unauthorized, e:
-            # TODO: Log in debug mode
+            settings = get_settings()
+            if settings['debug_authorization']:
+                logger = IDebugLogger()
+                logger.debug(u'Unauthorized tile %s called, ' % repr(tile) + 
+                             u'returns empty string. Full exception:\n %s' % e)
             return u''
     return consumer
 
