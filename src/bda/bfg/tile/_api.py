@@ -126,11 +126,52 @@ class TileRenderer(object):
             return u"Tile with name '%s' not found:<br /><pre>%s</pre>" % \
                    (name, e)
         return tile
+    
+def _consume_unauthorized(tile):
+    """wraps tile, consumes Unauthorized and returns empty unicode string. 
+    """
+    def consumer(context, request):
+        try:
+            tile(context, request)
+        except Unauthorized, e:
+            # TODO: Log in debug mode
+            return u''
+    return consumer
 
 # Registration
 def registerTile(name, path=None, attribute='render',
-                 interface=Interface, _class=Tile, permission='view'):
-    """registers a tile.""" 
+                 interface=Interface, _class=Tile, 
+                 permission='view', restricted=True):
+    """registers a tile.
+    
+    ``name``
+        identifier of the tile it later looked up with.
+    
+    ``path``
+        either relative path to the template or absolute path or path prefixed
+        by the absolute package name delimeted by ':'. If ``path`` is used
+        ``attribute`` is ignored. 
+        
+    ``attribute``
+        attribute on the given _class to be used to render the tile. Defaults to
+        ``render``.
+        
+    ``interface`` 
+        Interface or Class of the bfg model the tile is registered for.
+        
+    ``_class``
+        Class to be used to render the tile. usally ``bda.bfg.tile.Tile`` or a
+        subclass of. Promises to implement ``bda.bfg.ITile.
+        
+    ``permission`` 
+        Enables security checking for this tile. Defaults to ``view``. If set to
+        ``None`` security checks are disabled.
+        
+    ``restricted``
+        Wether to raise ``Unauthorized`` or not. Defaults to ``True``. If set to 
+        ``False`` the exception is consumed and an empty unicode string is 
+        returned. 
+    """ 
     if path:
         if not (':' in path or os.path.isabs(path)): 
             caller = caller_package(level=1)
@@ -141,18 +182,25 @@ def registerTile(name, path=None, attribute='render',
         authn_policy = registry.queryUtility(IAuthenticationPolicy)
         authz_policy = registry.queryUtility(IAuthorizationPolicy)    
         view = _secure_view(view, permission, authn_policy, authz_policy)
+    if not restricted:
+        view = _consume_unauthorized(view)
     registry.registerAdapter(view, [interface, IRequest], ITile, name, 
                              event=False)
     
 class tile(object):
-    """Tile decorator.
+    """Decorator to register classes and functions as tiles.
     """
     
     def __init__(self, name, path=None, attribute='render',
-                 interface=Interface, permission='view', level=2):
-        """name to register as, path to template, interface adapting to.
-        level is a special to make doctests pass the magic path-detection.
-        you should never need latter. 
+                 interface=Interface, permission='view', 
+                 restricted=True, level=2):
+        """ see ``registerTile`` for details on the other parameters.
+        
+        ``level`` 
+            is a bit special to make doctests pass the magic path-detection.
+            you must never touch it in application code.
+        
+          
         """
         self.name = name
         self.path = path
@@ -163,6 +211,7 @@ class tile(object):
         self.attribute = attribute
         self.interface = interface
         self.permission = permission
+        self.restricted = restricted
 
     def __call__(self, ob):
         registerTile(self.name,
@@ -170,5 +219,6 @@ class tile(object):
                      self.attribute,
                      interface=self.interface,
                      _class=ob,
-                     permission=self.permission)
+                     permission=self.permission,
+                     restricted=self.restricted)
         return ob

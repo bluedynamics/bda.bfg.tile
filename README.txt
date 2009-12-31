@@ -18,6 +18,9 @@ Changelog
 1.1
 ---
 
+- Tiles can now consume Unauthorized and return emtpy string, default still
+  raises exception.
+
 - Upgrade to make it work with repoze.bfg 1.2 
   (jensens, 2009-12-30) 
 
