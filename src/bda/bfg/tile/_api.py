@@ -20,6 +20,7 @@ from repoze.bfg.interfaces import (
 )
 from repoze.bfg.settings import get_settings
 from repoze.bfg.configuration import _secure_view
+from repoze.bfg.exceptions import Forbidden
 from repoze.bfg.threadlocal import get_current_registry
 from repoze.bfg.path import caller_package
 from repoze.bfg.renderers import template_renderer_factory
@@ -137,11 +138,11 @@ def _consume_unauthorized(tile):
     def consumer(context, request):
         try:
             tile(context, request)
-        except Unauthorized, e:
+        except Forbidden, e:
             settings = get_settings()
             if settings['debug_authorization']:
                 logger = IDebugLogger()
-                logger.debug(u'Unauthorized tile %s called, ' % repr(tile) + 
+                logger.debug(u'Forbidden tile %s called, ' % repr(tile) + 
                              u'returns empty string. Full exception:\n %s' % e)
             return u''
     return consumer
