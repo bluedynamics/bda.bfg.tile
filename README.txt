@@ -18,7 +18,7 @@ Changelog
 1.1
 ---
 
-- Tiles can now consume Unauthorized and return emtpy string, default still
+- Tiles can now consume Forbidden and return emtpy string, default still
   raises exception.
   (jensens, 2009-12-31) 
 

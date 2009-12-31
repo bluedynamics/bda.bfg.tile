@@ -60,6 +60,8 @@ def render_template(path, **kw):
     kw = _update_kw(**kw)
     if _redirect(kw):
         return u''
+    if not (':' in path or os.path.isabs(path)): 
+        raise ValueError, 'Relative path not supported: %s' % path
     renderer = template_renderer_factory(path, ZPTTemplateRenderer)
     return renderer(kw, {})    
     
@@ -87,15 +89,8 @@ class Tile(object):
         if not self.show:
             return u''
         if self.path:
-            try:                
-                return render_template(self.path, request=request,
+            return render_template(self.path, request=request,
                                        model=model, context=self)
-            except Exception, e:
-                settings = get_settings()
-                if settings['debug']:
-                    logger = IDebugLogger()
-                    logger.debug(u'Exception in %s:\n%s' % (repr(tile), e))
-                return u"Error while rendering tile %e." % repr(tile) 
         renderer = getattr(self, self.attribute)
         result = renderer()
         return result
@@ -143,14 +138,14 @@ def _consume_unauthorized(tile):
             if settings['debug_authorization']:
                 logger = IDebugLogger()
                 logger.debug(u'Forbidden tile %s called, ' % repr(tile) + 
-                             u'returns empty string. Full exception:\n %s' % e)
+                             u'Consumed Exception:\n %s' % e)
             return u''
     return consumer
 
 # Registration
 def registerTile(name, path=None, attribute='render',
                  interface=Interface, _class=Tile, 
-                 permission='view', restricted=True):
+                 permission='view', strict=True):
     """registers a tile.
     
     ``name``
@@ -176,8 +171,8 @@ def registerTile(name, path=None, attribute='render',
         Enables security checking for this tile. Defaults to ``view``. If set to
         ``None`` security checks are disabled.
         
-    ``restricted``
-        Wether to raise ``Unauthorized`` or not. Defaults to ``True``. If set to 
+    ``strict``
+        Wether to raise ``Forbidden`` or not. Defaults to ``True``. If set to 
         ``False`` the exception is consumed and an empty unicode string is 
         returned. 
     """ 
@@ -191,7 +186,7 @@ def registerTile(name, path=None, attribute='render',
         authn_policy = registry.queryUtility(IAuthenticationPolicy)
         authz_policy = registry.queryUtility(IAuthorizationPolicy)    
         view = _secure_view(view, permission, authn_policy, authz_policy)
-    if not restricted:
+    if not strict:
         view = _consume_unauthorized(view)
     registry.registerAdapter(view, [interface, IRequest], ITile, name, 
                              event=False)
@@ -202,7 +197,7 @@ class tile(object):
     
     def __init__(self, name, path=None, attribute='render',
                  interface=Interface, permission='view', 
-                 restricted=True, level=2):
+                 strict=True, level=2):
         """ see ``registerTile`` for details on the other parameters.
         
         ``level`` 
@@ -220,7 +215,7 @@ class tile(object):
         self.attribute = attribute
         self.interface = interface
         self.permission = permission
-        self.restricted = restricted
+        self.strict = strict
 
     def __call__(self, ob):
         registerTile(self.name,
@@ -229,5 +224,5 @@ class tile(object):
                      interface=self.interface,
                      _class=ob,
                      permission=self.permission,
-                     restricted=self.restricted)
+                     strict=self.strict)
         return ob
