@@ -1,4 +1,5 @@
 import os
+import cgi
 from webob import Response
 from webob.exc import HTTPFound
 from zope.interface import (
@@ -120,11 +121,11 @@ class TileRenderer(object):
         self.model, self.request = model, request
     
     def __call__(self, name):
-        try:
-            tile = getMultiAdapter((self.model, self.request), ITile, name=name)
-        except ComponentLookupError, e:
-            return u"Tile with name '%s' not found:<br /><pre>%s</pre>" % \
-                   (name, e)
+        #try:
+        tile = getMultiAdapter((self.model, self.request), ITile, name=name)
+        #except ComponentLookupError, e:
+        #    return u"Tile with name '%s' not found:<br /><pre>%s</pre>" % \
+        #           (name, cgi.escape(str(e)))
         return tile
     
 def _consume_unauthorized(tile):
@@ -145,7 +146,7 @@ def _consume_unauthorized(tile):
 # Registration
 def registerTile(name, path=None, attribute='render',
                  interface=Interface, _class=Tile, 
-                 permission='view', strict=True):
+                 permission='view', strict=True, _level=2):
     """registers a tile.
     
     ``name``
@@ -175,11 +176,16 @@ def registerTile(name, path=None, attribute='render',
         Wether to raise ``Forbidden`` or not. Defaults to ``True``. If set to 
         ``False`` the exception is consumed and an empty unicode string is 
         returned. 
+
+    ``_level`` 
+        is a bit special to make doctests pass the magic path-detection.
+        you must never touch it in application code.
     """ 
     if path:
         if not (':' in path or os.path.isabs(path)): 
-            caller = caller_package(level=1)
+            caller = caller_package(_level)
             path = '%s:%s' % (caller.__name__, path)
+    #print "register tile %s" % [name, path, interface] 
     view = _class(path, attribute)
     registry = get_current_registry()
     if permission is not None:
@@ -197,20 +203,14 @@ class tile(object):
     
     def __init__(self, name, path=None, attribute='render',
                  interface=Interface, permission='view', 
-                 strict=True, level=2):
+                 strict=True, _level=2):
         """ see ``registerTile`` for details on the other parameters.
-        
-        ``level`` 
-            is a bit special to make doctests pass the magic path-detection.
-            you must never touch it in application code.
-        
-          
         """
         self.name = name
         self.path = path
         if path:
             if not (':' in path or os.path.isabs(path)): 
-                caller = caller_package(level)
+                caller = caller_package(_level)
                 self.path = '%s:%s' % (caller.__name__, path)
         self.attribute = attribute
         self.interface = interface

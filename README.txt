@@ -18,6 +18,9 @@ Changelog
 1.1
 ---
 
+- fix the nasty caller_packages level.
+  (jensens, 2010-01-04) 
+
 - Tiles can now consume Forbidden and return emtpy string, default still
   raises exception.
   (jensens, 2009-12-31) 
