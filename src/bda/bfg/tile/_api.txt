@@ -3,6 +3,7 @@ Imports.
 
     >>> from bda.bfg.tile import Tile
     >>> from bda.bfg.tile import TileRenderer
+    >>> from bda.bfg.tile import render_tile
     >>> from bda.bfg.tile import registerTile
     >>> from bda.bfg.tile import tile
     
@@ -40,10 +41,16 @@ doctest only to reduce the module level.
 
     >>> registerTile('tileone', 'testdata/tile1.pt', _level=1)
 
-Render the already registered tile.
+Render the already registered tile - first how it works in templates.
 ::
 
-    >>> TileRenderer(model, request)('tileone')
+    >>> tilerenderer = TileRenderer(model, request)
+    >>> tilerenderer('tileone')
+    u'<span>Tile One</span>'
+    
+For simplification in Python code the same can be achieved by::
+
+    >>> render_tile(model, request, 'tileone')
     u'<span>Tile One</span>'
 
 Now the decorator (ignore the ``_level``)
@@ -52,7 +59,7 @@ Now the decorator (ignore the ``_level``)
     >>> @tile('tiletwo', 'testdata/tile2.pt', _level=1)
     ... class Tile2(Tile):
     ...     data = u'custom'
-    >>> TileRenderer(model, request)('tiletwo')
+    >>> render_tile(model, request, 'tiletwo')
     u'<span>Tile Two: <b><span>Tile One</span></b></span>'
 
 You can define an attribute which is responsible to render the tile instead of
@@ -64,12 +71,13 @@ defining a template. By default ``render`` is taken. With the keyword argument
     ... class Tile2(Tile):
     ...     def render(self):
     ...         return u'<h1>Rendered via attribute call</h1>'
-    >>> TileRenderer(model, request)('attrtile')
+    >>> render_tile(model, request, 'attrtile')
     u'<h1>Rendered via attribute call</h1>'
     
     >>> @tile('attrtile', attribute='foobar')
     ... class Tile2(Tile):
     ...     def foobar(self):
     ...         return u'<h1>Rendered via attribute foobar call</h1>'
-    >>> TileRenderer(model, request)('attrtile')
+    >>> render_tile(model, request, 'attrtile')
     u'<h1>Rendered via attribute foobar call</h1>'
+    

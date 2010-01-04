@@ -76,6 +76,34 @@ def render_template_to_response(path, **kw):
         return HTTPFound(location=kw['request'].environ['redirect'])
     response_factory = queryUtility(IResponseFactory, default=Response)
     return response_factory(result)
+
+def render_tile(model, request, name):
+    """renders a tile. Intended usage is in application code.
+    
+    ``model``
+        application model aka context
+        
+    ``request``
+        the current request
+        
+    ``name`` 
+        name of the requested tile
+    """
+    try:
+        tile = getMultiAdapter((model, request), ITile, name=name)
+    except ComponentLookupError, e:
+        return u"Tile with name '%s' not found:<br /><pre>%s</pre>" % \
+               (name, cgi.escape(str(e)))
+    return tile
+
+class TileRenderer(object):
+    """Renders a tile. Intended usage is as instance in template code."""
+    
+    def __init__(self, model, request):
+        self.model, self.request = model, request
+    
+    def __call__(self, name):
+        return render_tile(self.model, self.request, name)
     
 class Tile(object):
     implements(ITile)
@@ -115,25 +143,13 @@ class Tile(object):
     def nodeurl(self):
         relpath = [p for p in self.model.path if p is not None]
         return '/'.join([self.request.application_url] + relpath)
-
-class TileRenderer(object):
     
-    def __init__(self, model, request):
-        self.model, self.request = model, request
-    
-    def __call__(self, name):
-        try:
-            #import pdb;pdb.set_trace()
-            tile = getMultiAdapter((self.model, self.request), ITile, name=name)
-        except ComponentLookupError, e:
-            return u"Tile with name '%s' not found:<br /><pre>%s</pre>" % \
-                   (name, cgi.escape(str(e)))
-        return tile
-
 def _secure_tile(tile, permission, authn_policy, authz_policy, strict):
     """wraps tile and does security checks.
     """
     wrapped_tile = tile
+    if not authn_policy and not authz_policy:
+        return tile
     def _secured_tile(context, request):
         principals = authn_policy.effective_principals(request)
         if authz_policy.permits(context, principals, permission):
@@ -156,7 +172,6 @@ def _secure_tile(tile, permission, authn_policy, authz_policy, strict):
     decorate_view(wrapped_tile, tile)
     return wrapped_tile
 
-
 # Registration
 def registerTile(name, path=None, attribute='render',
                  interface=Interface, _class=Tile, 
@@ -164,7 +179,7 @@ def registerTile(name, path=None, attribute='render',
     """registers a tile.
     
     ``name``
-        identifier of the tile it later looked up with.
+        identifier of the tile (for later lookup).
     
     ``path``
         either relative path to the template or absolute path or path prefixed
@@ -212,7 +227,7 @@ class tile(object):
     """
     
     def __init__(self, name, path=None, attribute='render',
-                 interface=Interface, permission='view', 
+                 interface=Interface, permission='view',
                  strict=True, _level=2):
         """ see ``registerTile`` for details on the other parameters.
         """
@@ -227,8 +242,8 @@ class tile(object):
 
     def __call__(self, ob):
         registerTile(self.name,
-                     self.path,
-                     self.attribute,
+                     path=self.path,
+                     attribute=self.attribute,
                      interface=self.interface,
                      _class=ob,
                      permission=self.permission,
