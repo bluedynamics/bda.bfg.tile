@@ -6,6 +6,7 @@ from zope.interface import (
     Interface, 
     Attribute, 
     implements,
+    directlyProvides,
 )
 from zope.component import (
     queryUtility,
@@ -20,7 +21,7 @@ from repoze.bfg.interfaces import (
     IDebugLogger,
 )
 from repoze.bfg.settings import get_settings
-from repoze.bfg.configuration import _secure_view
+from repoze.bfg.configuration import decorate_view
 from repoze.bfg.exceptions import Forbidden
 from repoze.bfg.threadlocal import get_current_registry
 from repoze.bfg.path import caller_package
@@ -121,27 +122,40 @@ class TileRenderer(object):
         self.model, self.request = model, request
     
     def __call__(self, name):
-        #try:
-        tile = getMultiAdapter((self.model, self.request), ITile, name=name)
-        #except ComponentLookupError, e:
-        #    return u"Tile with name '%s' not found:<br /><pre>%s</pre>" % \
-        #           (name, cgi.escape(str(e)))
-        return tile
-    
-def _consume_unauthorized(tile):
-    """wraps tile, consumes Unauthorized and returns empty unicode string. 
-    """
-    def consumer(context, request):
         try:
-            tile(context, request)
-        except Forbidden, e:
-            settings = get_settings()
-            if settings['debug_authorization']:
-                logger = IDebugLogger()
-                logger.debug(u'Forbidden tile %s called, ' % repr(tile) + 
-                             u'Consumed Exception:\n %s' % e)
-            return u''
-    return consumer
+            #import pdb;pdb.set_trace()
+            tile = getMultiAdapter((self.model, self.request), ITile, name=name)
+        except ComponentLookupError, e:
+            return u"Tile with name '%s' not found:<br /><pre>%s</pre>" % \
+                   (name, cgi.escape(str(e)))
+        return tile
+
+def _secure_tile(tile, permission, authn_policy, authz_policy, strict):
+    """wraps tile and does security checks.
+    """
+    wrapped_tile = tile
+    def _secured_tile(context, request):
+        principals = authn_policy.effective_principals(request)
+        if authz_policy.permits(context, principals, permission):
+            return tile(context, request)
+        msg = getattr(request, 'authdebug_message',
+                      'Unauthorized: tile %s failed permission check' % tile)
+        if strict:
+            raise Forbidden(msg)
+        settings = get_settings()
+        if settings.get('debug_authorization', False):
+            logger = IDebugLogger()
+            logger.debug(msg)
+        return u''
+    _secured_tile.__call_permissive__ = tile
+    def _permitted(context, request):
+        principals = authn_policy.effective_principals(request)
+        return authz_policy.permits(context, principals, permission)
+    _secured_tile.__permitted__ = _permitted
+    wrapped_tile = _secured_tile
+    decorate_view(wrapped_tile, tile)
+    return wrapped_tile
+
 
 # Registration
 def registerTile(name, path=None, attribute='render',
@@ -181,20 +195,16 @@ def registerTile(name, path=None, attribute='render',
         is a bit special to make doctests pass the magic path-detection.
         you must never touch it in application code.
     """ 
-    if path:
-        if not (':' in path or os.path.isabs(path)): 
-            caller = caller_package(_level)
-            path = '%s:%s' % (caller.__name__, path)
-    #print "register tile %s" % [name, path, interface] 
-    view = _class(path, attribute)
+    if path and not (':' in path or os.path.isabs(path)): 
+        path = '%s:%s' % (caller_package(_level).__name__, path)
+    tile = _class(path, attribute)
     registry = get_current_registry()
     if permission is not None:
         authn_policy = registry.queryUtility(IAuthenticationPolicy)
         authz_policy = registry.queryUtility(IAuthorizationPolicy)    
-        view = _secure_view(view, permission, authn_policy, authz_policy)
-    if not strict:
-        view = _consume_unauthorized(view)
-    registry.registerAdapter(view, [interface, IRequest], ITile, name, 
+        tile = _secure_tile(tile, permission, authn_policy, authz_policy, 
+                            strict)
+    registry.registerAdapter(tile, [interface, IRequest], ITile, name, 
                              event=False)
     
 class tile(object):
@@ -207,11 +217,9 @@ class tile(object):
         """ see ``registerTile`` for details on the other parameters.
         """
         self.name = name
+        if path and not (':' in path or os.path.isabs(path)): 
+            path = '%s:%s' % (caller_package(_level).__name__, path)
         self.path = path
-        if path:
-            if not (':' in path or os.path.isabs(path)): 
-                caller = caller_package(_level)
-                self.path = '%s:%s' % (caller.__name__, path)
         self.attribute = attribute
         self.interface = interface
         self.permission = permission
