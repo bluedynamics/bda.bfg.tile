@@ -89,8 +89,9 @@ def render_tile(model, request, name):
     ``name`` 
         name of the requested tile
     """
+    registry = get_current_registry()
     try:
-        tile = getMultiAdapter((model, request), ITile, name=name)
+        tile = registry.getMultiAdapter((model, request), ITile, name=name)
     except ComponentLookupError, e:
         return u"Tile with name '%s' not found:<br /><pre>%s</pre>" % \
                (name, cgi.escape(str(e)))
@@ -221,6 +222,7 @@ def registerTile(name, path=None, attribute='render',
                             strict)
     registry.registerAdapter(tile, [interface, IRequest], ITile, name, 
                              event=False)
+    print "register tile %s %s" % (name, registry)
     
 class tile(object):
     """Decorator to register classes and functions as tiles.
