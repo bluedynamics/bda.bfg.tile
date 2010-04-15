@@ -8,11 +8,7 @@ from zope.interface import (
     implements,
     directlyProvides,
 )
-from zope.component import (
-    queryUtility,
-    getMultiAdapter,
-    ComponentLookupError,
-)
+from zope.component import ComponentLookupError
 from repoze.bfg.interfaces import (
     IRequest,
     IResponseFactory,
@@ -74,7 +70,7 @@ def render_template_to_response(path, **kw):
     result = renderer(kw, {})
     if _redirect(kw):
         return HTTPFound(location=kw['request'].environ['redirect'])
-    response_factory = queryUtility(IResponseFactory, default=Response)
+    response_factory = kw['request'].registry.queryUtility(IResponseFactory, default=Response)
     return response_factory(result)
 
 def render_tile(model, request, name):
@@ -89,9 +85,8 @@ def render_tile(model, request, name):
     ``name`` 
         name of the requested tile
     """
-    registry = get_current_registry()
     try:
-        tile = registry.getMultiAdapter((model, request), ITile, name=name)
+        tile = request.registry.getMultiAdapter((model, request), ITile, name=name)
     except ComponentLookupError, e:
         return u"Tile with name '%s' not found:<br /><pre>%s</pre>" % \
                (name, cgi.escape(str(e)))
@@ -222,7 +217,6 @@ def registerTile(name, path=None, attribute='render',
                             strict)
     registry.registerAdapter(tile, [interface, IRequest], ITile, name, 
                              event=False)
-    print "register tile %s %s" % (name, registry)
     
 class tile(object):
     """Decorator to register classes and functions as tiles.
