@@ -75,7 +75,7 @@ def render_template_to_response(path, **kw):
     return response_factory(result)
 
 def render_to_response(request, result):
-    if _redirect(request=request):
+    if _redirect(kw={'request': request}):
         return HTTPFound(location=request.environ['redirect'])
     response_factory = request.registry.queryUtility(IResponseFactory,
                                                      default=Response)
