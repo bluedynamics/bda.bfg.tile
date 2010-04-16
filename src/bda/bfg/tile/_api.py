@@ -25,7 +25,11 @@ from repoze.bfg.renderers import template_renderer_factory
 from repoze.bfg.chameleon_zpt import ZPTTemplateRenderer
 
 class ITile(Interface):
-    """Renders some HTML snippet."""
+    """Renders some HTML snippet.
+    """
+    
+    name = Attribute(u"The name und which this tile is registered.")
+    show = Attribute(u"Flag wether to render the tile.")
     
     def __call__(model, request):
         """Renders the tile.
@@ -40,8 +44,6 @@ class ITile(Interface):
         
         I.e. fetch data to display ... 
         """
-        
-    show = Attribute("""Render this tile?""")
     
 def _update_kw(**kw):
     if not ('request' in kw and 'model' in kw):
@@ -112,7 +114,8 @@ class TileRenderer(object):
 class Tile(object):
     implements(ITile)
     
-    def __init__(self, path, attribute):
+    def __init__(self, path, attribute, name):
+        self.name = name
         self.path = path
         self.attribute = attribute
 
@@ -216,7 +219,7 @@ def registerTile(name, path=None, attribute='render',
     """ 
     if path and not (':' in path or os.path.isabs(path)): 
         path = '%s:%s' % (caller_package(_level).__name__, path)
-    tile = _class(path, attribute)
+    tile = _class(path, attribute, name)
     registry = get_current_registry()
     if permission is not None:
         authn_policy = registry.queryUtility(IAuthenticationPolicy)
