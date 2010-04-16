@@ -70,7 +70,15 @@ def render_template_to_response(path, **kw):
     result = renderer(kw, {})
     if _redirect(kw):
         return HTTPFound(location=kw['request'].environ['redirect'])
-    response_factory = kw['request'].registry.queryUtility(IResponseFactory, default=Response)
+    response_factory = kw['request'].registry.queryUtility(IResponseFactory,
+                                                           default=Response)
+    return response_factory(result)
+
+def render_to_response(request, result):
+    if _redirect(request=request):
+        return HTTPFound(location=request.environ['redirect'])
+    response_factory = request.registry.queryUtility(IResponseFactory,
+                                                     default=Response)
     return response_factory(result)
 
 def render_tile(model, request, name):
@@ -171,8 +179,7 @@ def _secure_tile(tile, permission, authn_policy, authz_policy, strict):
 # Registration
 def registerTile(name, path=None, attribute='render',
                  interface=Interface, _class=Tile, 
-                 permission='view', strict=True, tile_interface=ITile,
-                 _level=2):
+                 permission='view', strict=True, _level=2):
     """registers a tile.
     
     ``name``
@@ -201,11 +208,7 @@ def registerTile(name, path=None, attribute='render',
     ``strict``
         Wether to raise ``Forbidden`` or not. Defaults to ``True``. If set to 
         ``False`` the exception is consumed and an empty unicode string is 
-        returned. 
-
-    ``tile_interface``
-        An optional interface which acts as tile interface. Defaults to
-        ``ITile``.
+        returned.
 
     ``_level`` 
         is a bit special to make doctests pass the magic path-detection.
@@ -229,7 +232,7 @@ class tile(object):
     
     def __init__(self, name, path=None, attribute='render',
                  interface=Interface, permission='view',
-                 strict=True, tile_interface=ITile, _level=2):
+                 strict=True, _level=2):
         """ see ``registerTile`` for details on the other parameters.
         """
         self.name = name
@@ -240,7 +243,6 @@ class tile(object):
         self.interface = interface
         self.permission = permission
         self.strict = strict
-        self.tile_interface = tile_interface
 
     def __call__(self, ob):
         registerTile(self.name,
@@ -249,6 +251,5 @@ class tile(object):
                      interface=self.interface,
                      _class=ob,
                      permission=self.permission,
-                     strict=self.strict,
-                     tile_interface=self.tile_interface)
+                     strict=self.strict)
         return ob
