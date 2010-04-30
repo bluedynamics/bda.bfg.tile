@@ -183,7 +183,7 @@ def _secure_tile(tile, permission, authn_policy, authz_policy, strict):
 
 # Registration
 def registerTile(name, path=None, attribute='render',
-                 interface=Interface, _class=Tile, 
+                 interface=Interface, class_=Tile, 
                  permission='view', strict=True, _level=2):
     """registers a tile.
     
@@ -202,7 +202,7 @@ def registerTile(name, path=None, attribute='render',
     ``interface`` 
         Interface or Class of the bfg model the tile is registered for.
         
-    ``_class``
+    ``class_``
         Class to be used to render the tile. usally ``bda.bfg.tile.Tile`` or a
         subclass of. Promises to implement ``bda.bfg.ITile.
         
@@ -221,7 +221,7 @@ def registerTile(name, path=None, attribute='render',
     """ 
     if path and not (':' in path or os.path.isabs(path)): 
         path = '%s:%s' % (caller_package(_level).__name__, path)
-    tile = _class(path, attribute, name)
+    tile = class_(path, attribute, name)
     registry = get_current_registry()
     if permission is not None:
         authn_policy = registry.queryUtility(IAuthenticationPolicy)
@@ -254,7 +254,7 @@ class tile(object):
                      path=self.path,
                      attribute=self.attribute,
                      interface=self.interface,
-                     _class=ob,
+                     class_=ob,
                      permission=self.permission,
                      strict=self.strict)
         return ob
