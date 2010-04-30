@@ -144,6 +144,8 @@ class Tile(object):
     
     def redirect(self, url):
         # why do we need a redirect in a tile!?
+        # a.: a tile is not always rendered to the response, form tiles i.e.
+        # might perform redirection.
         self.request.environ['redirect'] = url
     
     @property
