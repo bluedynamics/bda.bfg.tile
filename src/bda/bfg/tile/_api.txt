@@ -10,6 +10,7 @@ Imports.
 We need some dummies as model and request.
 ::
 
+    >>> from repoze.bfg.threadlocal import get_current_registry
     >>> class Model(object): pass
     >>> model = Model()
     >>> from repoze.bfg.request import Request
@@ -18,19 +19,12 @@ We need some dummies as model and request.
     ...     'QUERY_STRING':''
     ... }    
     >>> request = Request(environ=environ)
-
-For bfg we need to hook our registry into zca.
-::
-
-    >>> from zope.component import getSiteManager
-    >>> from repoze.bfg.threadlocal import get_current_registry
-    >>> sm = getSiteManager.sethook(get_current_registry)
+    >>> request.registry = get_current_registry()
     
 The pure Tile itself. Normally you do not create this directly, this is done
 due registration, see below.
 ::
 
-    >>> request.registry = get_current_registry()
     >>> mytile = Tile('bda.bfg.tile:testdata/tile1.pt', 'render', 'foo')
     >>> mytile(model,  request)
     u'<span>Tile One</span>'
