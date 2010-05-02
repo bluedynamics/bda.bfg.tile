@@ -30,7 +30,8 @@ The pure Tile itself. Normally you do not create this directly, this is done
 due registration, see below.
 ::
 
-    >>> mytile = Tile('bda.bfg.tile:testdata/tile1.pt', None)
+    >>> request.registry = get_current_registry()
+    >>> mytile = Tile('bda.bfg.tile:testdata/tile1.pt', 'render', 'foo')
     >>> mytile(model,  request)
     u'<span>Tile One</span>'
 

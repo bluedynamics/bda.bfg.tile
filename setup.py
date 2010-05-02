@@ -36,7 +36,7 @@ setup(name='bda.bfg.tile',
           "http://dist.repoze.org/bfg/1.2/",
       ],
       extras_require = dict(
-          tests=['interlude']
+          test=['interlude']
       ),
       tests_require=['interlude'],
       test_suite="bda.bfg.tile.tests.test_suite",      
