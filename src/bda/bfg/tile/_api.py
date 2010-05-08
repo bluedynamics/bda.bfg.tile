@@ -165,8 +165,7 @@ def _secure_tile(tile, permission, authn_policy, authz_policy, strict):
             try:
                 return tile(context, request)
             except Exception, e:
-                print tile
-                raise e
+                raise
         msg = getattr(request, 'authdebug_message',
                       'Unauthorized: tile %s failed permission check' % tile)
         if strict:
