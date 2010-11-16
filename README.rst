@@ -12,6 +12,14 @@ Splitting your application in such small and logic application parts makes it
 easy to re-use this application, simplifies application ajaxification and
 the use of same application parts in different manners.
 
+Contributors
+============
+
+- Jens Klein <jens@bluedynamics.com>
+
+- Robert Niederreiter <rnix@squarewave.at>
+
+
 Changelog
 =========
 
