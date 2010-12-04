@@ -207,7 +207,7 @@ def registerTile(name, path=None, attribute='render',
         
     ``class_``
         Class to be used to render the tile. usally ``bda.bfg.tile.Tile`` or a
-        subclass of. Promises to implement ``bda.bfg.ITile.
+        subclass of. Promises to implement ``bda.bfg.ITile``.
         
     ``permission`` 
         Enables security checking for this tile. Defaults to ``view``. If set to
