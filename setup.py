@@ -33,9 +33,10 @@ setup(name='bda.bfg.tile',
           'setuptools',
           'repoze.bfg',
       ],
-      dependency_links = [
-          "http://dist.repoze.org/bfg/1.2/",
-      ],
+      # XXX: why should this be set here?
+      #dependency_links = [
+      #    "http://dist.repoze.org/bfg/1.3/",
+      #],
       extras_require = dict(
           test=['interlude']
       ),
